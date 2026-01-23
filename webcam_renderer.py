@@ -1,8 +1,10 @@
 import cv2
-import os
+import shutil
+import numpy as np
+import os 
 
 darkness_scale = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"]    
-
+darkness_scale_len = len(darkness_scale)
 vc = cv2.VideoCapture(0)
 
 if vc.isOpened():
@@ -11,26 +13,23 @@ else:
 	rval = False
 
 while result := vc.read():
-
+	
 	rval, frame = result
+		
+	gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+	height, width = gray_frame.shape
 	
-	width, height, _ = frame.shape	
+	terminal_size = shutil.get_terminal_size((120, 80))
+	terminal_height = np.linspace(0, height-1, terminal_size.lines-1, \
+																	dtype=int)
+	terminal_width = np.linspace(0, width-1, terminal_size.columns, dtype=int)
 
+	gray_vec = gray_frame[np.ix_(terminal_height, terminal_width)]                        
+	                                                 		
+	ascii_characters = np.array(darkness_scale)[np.round(
+								np.round(gray_vec/255*(darkness_scale_len-1))
+								).astype(int)]
 	
-	ascii_characters = ""                                                       
-                                                                                 
-	
-	for y in range(width):                                                     
-		if y%5==0:
-			for x in range(height):                                                   
-				if x%2==0:
-					r, g, b = frame[y, x]                                                                                              
-					darkness = (r+g+b)/(255*3)					                                            			                                                   
-					darkness_index = int(darkness*9)                           
-					ascii_characters += darkness_scale[darkness_index]
-			ascii_characters += "\n"
-	
-	os.system('clear')
-	print(ascii_characters)
-
-vc.release()
+	print("\033[H\033[J", end="") 
+	print("\n".join("".join(row) for row in ascii_characters))
